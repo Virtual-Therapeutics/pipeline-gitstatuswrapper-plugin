@@ -102,15 +102,18 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
    * Status.
    */
   private String targetUrl = "";
-
   /**
-   * Optional variables to set the status description to upon Success
+   * Status to set upon completion of this step
+   */
+  private GHCommitState completionStatus = GHCommitState.SUCCESS;
+  /**
+   * Optional variables to set the status description to upon completion of this step
    *
    * This variable can also be a regex pattern if the string is wrapped in '/', ex: /(.*)/
    *
    * Defaults to description if empty
    */
-  private String successDescription = "";
+  private String completionDescription = "";
   /**
    * Optional variables to set the status description to upon Failure
    *
@@ -199,13 +202,34 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
     this.account = account;
   }
 
-  public String getSuccessDescription() {
-    return StringUtils.isEmpty(successDescription) ? this.getDescription() : successDescription;
+  public GHCommitState getCompletionStatus() {
+    return this.completionStatus;
   }
 
   @DataBoundSetter
+  public void setCompletionStatus(String completionStatus) {
+    this.completionStatus = GHCommitState.valueOf(completionStatus);
+  }
+
+  public String getCompletionDescription() {
+    return StringUtils.isEmpty(completionDescription) ? this.getDescription() : completionDescription;
+  }
+
+  @DataBoundSetter
+  public void setCompletionDescription(String completionDescription) {
+    this.completionDescription = completionDescription;
+  }
+
+  // @Deprecated?
+  public String getSuccessDescription() {
+    return StringUtils.isEmpty(completionDescription) ? this.getDescription() : completionDescription;
+  }
+
+  // @Deprecated?
+  @DataBoundSetter
   public void setSuccessDescription(String successDescription) {
-    this.successDescription = successDescription;
+    if (!StringUtils.isEmpty(successDescription))
+      this.completionDescription = successDescription;
   }
 
   public String getFailureDescription() {
@@ -327,7 +351,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
       switch(state)
       {
         case STARTED: return GHCommitState.PENDING;
-        case COMPLETED: return GHCommitState.SUCCESS;
+        case COMPLETED: return this.step.getCompletionStatus();
         case FAILED: return GHCommitState.FAILURE; // TODO: differentiate failure/error?
         default: throw new IllegalArgumentException("Don't know what to do with state " + state.toString());
       }
@@ -377,7 +401,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
         return this.step.getDescription();
       }
 
-      String description = state == StepState.COMPLETED ? this.step.getSuccessDescription()
+      String description = state == StepState.COMPLETED ? this.step.getCompletionDescription()
           : this.step.getFailureDescription();
 
       String result = description;

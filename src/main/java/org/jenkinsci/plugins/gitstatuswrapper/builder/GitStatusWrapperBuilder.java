@@ -153,13 +153,34 @@ public class GitStatusWrapperBuilder extends Builder {
     return this.credentialsId;
   }
 
-  public String getSuccessDescription() {
-    return StringUtils.isEmpty(successDescription) ? this.getDescription() : successDescription;
+  public String getCompletionStatus() {
+    return this.completionStatus;
   }
 
   @DataBoundSetter
+  public void setCompletionStatus(String completionStatus) {
+    this.completionStatus = GHCommitState.valueOf(completionStatus).name();
+  }
+
+  public String getCompletionDescription() {
+    return StringUtils.isEmpty(completionDescription) ? this.getDescription() : completionDescription;
+  }
+
+  @DataBoundSetter
+  public void setCompletionDescription(String completionDescription) {
+    this.completionDescription = completionDescription;
+  }
+
+  // @Deprecated?
+  public String getSuccessDescription() {
+    return StringUtils.isEmpty(completionDescription) ? this.getDescription() : completionDescription;
+  }
+
+  // @Deprecated?
+  @DataBoundSetter
   public void setSuccessDescription(String successDescription) {
-    this.successDescription = successDescription;
+    if (!StringUtils.isEmpty(successDescription))
+      this.completionDescription = successDescription;
   }
 
   public String getFailureDescription() {
@@ -215,15 +236,19 @@ public class GitStatusWrapperBuilder extends Builder {
    */
   private String credentialsId;
   /**
-   * Optional variables to set the status description to upon Success
+   * Status to set upon completion of this step
+   */
+  private String completionStatus = "SUCCESS";
+  /**
+   * Optional variables to set the status description to upon completion of this step
    *
    * This variable can also be a regex pattern if the string is wrapped in '/', ex: /(.*)/
    *
    * Defaults to description if empty
    */
-  private String successDescription = "";
+  private String completionDescription = "";
   /**
-   * Optional variables to set the status description to upon Failure
+   * Optional variables to set the status description to upon failure of this step
    *
    * This variable can also be a regex pattern if the string is wrapped in '/', ex: /(.*)/
    *
@@ -289,8 +314,10 @@ public class GitStatusWrapperBuilder extends Builder {
         resolveEnvOrDefault(this.targetUrl, DisplayURLProvider.get().getRunURL(build), env, vr));
     statusWrapperData.setGitApiUrl(
         resolveEnvOrDefault(this.gitApiUrl, GitHubHelper.DEFAULT_GITHUB_API_URL, env, vr));
-    statusWrapperData.setSuccessDescription(
-        resolveEnvOrDefault(this.successDescription, this.description, env, vr));
+    statusWrapperData.setCompletionStatus(
+        resolveEnvOrDefault(this.completionStatus, "SUCCESS", env, vr));
+    statusWrapperData.setCompletionDescription(
+        resolveEnvOrDefault(this.completionDescription, this.description, env, vr));
     statusWrapperData.setFailureDescription(
         resolveEnvOrDefault(this.failureDescription, this.description, env, vr));
 
@@ -351,7 +378,7 @@ public class GitStatusWrapperBuilder extends Builder {
       switch(state)
       {
         case STARTED: return GHCommitState.PENDING;
-        case COMPLETED: return GHCommitState.SUCCESS;
+        case COMPLETED: return GHCommitState.valueOf(statusWrapperData.getCompletionStatus());
         case FAILED: return GHCommitState.FAILURE; // TODO: differentiate failure/error?
         default: throw new IllegalArgumentException("Don't know what to do with state " + state.toString());
       }
@@ -371,7 +398,7 @@ public class GitStatusWrapperBuilder extends Builder {
       return this.getDescription();
     }
 
-    String description = state == StepState.COMPLETED ? statusWrapperData.getSuccessDescription()
+    String description = state == StepState.COMPLETED ? statusWrapperData.getCompletionDescription()
         : statusWrapperData.getFailureDescription();
 
     String result = description;

@@ -33,18 +33,18 @@ stage('Annoying status updates') {
 
 The available parameters are:
 
-| Parameter       | Description  |
-| -------------   |:-------------|
-| _credentialsId_        | The id of the github's credentials to use, must be of type UsernameAndPassword and contain the password or a personal access token. |
-| _description_          | A short description for the status |
-| _gitHubContext_        | The status context. GitHub uses the context to differentiate statuses |
-| _sha_                  | The sha that identifies the commit to set the status on |
-| _repo_                 | The repo that owns the commit we want to set the status on |
-| _account_              | The account that owns the repository |
-| _gitApiUrl_            | GitHub Enterprise instance API URL |
-| _targetUrl_            | The targetUrl for the notification|
-| _successDescription_   | A short description for the status if wrapped steps succeed _Can be Regex_ |
-| _failureDescription_   | A short description for the status if wrapped steps fail. _Can be Regex_ |
+| Parameter               | Description  |
+| -------------           |:-------------|
+| _credentialsId_         | The id of the github's credentials to use, must be of type UsernameAndPassword and contain the password or a personal access token. |
+| _description_           | A short description for the status |
+| _gitHubContext_         | The status context. GitHub uses the context to differentiate statuses |
+| _sha_                   | The sha that identifies the commit to set the status on |
+| _repo_                  | The repo that owns the commit we want to set the status on |
+| _account_               | The account that owns the repository |
+| _gitApiUrl_             | GitHub Enterprise instance API URL |
+| _targetUrl_             | The targetUrl for the notification|
+| _completionDescription_ | A short description for the status if wrapped steps succeed _Can be Regex_ |
+| _failureDescription_    | A short description for the status if wrapped steps fail. _Can be Regex_ |
 
 
 
@@ -77,7 +77,7 @@ The plugin will default some parameters as a convenience. The following are defa
 # Regex descriptions
 _Since 1.1.0_
 
-You can now specify a regex pattern for the *successDescription* and *failureDescription* parameters. This regex will be used to match against the entire build log.
+You can now specify a regex pattern for the *completionDescription* and *failureDescription* parameters. This regex will be used to match against the entire build log.
 It will use the first group match as the description for the respective status message.
 
 To enable, wrap your regex with '`/`' to have it evaluted as regex.
@@ -85,7 +85,7 @@ To enable, wrap your regex with '`/`' to have it evaluted as regex.
 Example:
 ```
 gitStatusWrapper(credentialsId: 'github-token', description: 'Pending description', gitHubContext: 'jenkins/appTests', 
-                successDescription='/^buildVersion=(.*)$/') {
+                completionDescription='/^buildVersion=(.*)$/') {
    sh '''
    echo "buildVersion=$(./my_script.sh)"
    '''

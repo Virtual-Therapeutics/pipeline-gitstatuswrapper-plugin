@@ -45,10 +45,13 @@ THE SOFTWARE.
         <f:textbox />
     </f:entry>
     <f:advanced>
+        <f:entry field="completionStatus" title="${%completionStatus}">
+            <f:textbox/>
+        </f:entry>
         <f:entry field="failureDescription" title="${%failureDescription}">
             <f:textbox/>
         </f:entry>
-        <f:entry field="successDescription" title="${%successDescription}">
+        <f:entry field="completionDescription" title="${%completionDescription}">
             <f:textbox/>
         </f:entry>
         <f:entry field="targetUrl" title="${%notificationTargetUrl}">
