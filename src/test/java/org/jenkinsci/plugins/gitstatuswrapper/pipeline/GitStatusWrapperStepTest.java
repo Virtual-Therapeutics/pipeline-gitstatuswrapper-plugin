@@ -27,6 +27,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.net.Proxy;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.anyString;
 
 @RunWith(PowerMockRunner.class)
@@ -35,34 +36,64 @@ import static org.mockito.Matchers.anyString;
 public class GitStatusWrapperStepTest {
   public static final String SUCCESSFUL_LOG_MSG = "Successful Log!";
 
+  public static final String DEFAULT_DESCRIPTION = "OK";
+  public static final String PENDING_DESCRIPTION = "More to Do...";
+  public static final String SUCCESS_DESCRIPTION = "Success!";
+
   public static final String SUCCESS_JENKINS_PAYLOAD =
-          "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
-                  "credentialsId: 'dummy', description: 'OK', " +
-                  "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
-                  "targetUrl: 'http://www.someTarget.com') " +
-                  "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
+
+  // Does the old `successDescription` name still work?
+  public static final String SUCCESS_JENKINS_DESCRIPTION_PAYLOAD =
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "successDescription: '" + SUCCESS_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
 
   public static final String SUCCESS_JENKINS_ENTERPRISE_PAYLOAD =
-      "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
-          "credentialsId: 'dummy', description: 'OK', " +
-          "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
-          "targetUrl: 'http://www.someTarget.com', gitApiUrl: 'https://api.example.com') " +
-          "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com', gitApiUrl: 'https://api.example.com') " +
+      "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
 
-  public static final String FAIL_JENKINS_PAYLOAD_BAD_BLOCK =
-      "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
-          "credentialsId: 'dummy', description: 'OK', " +
-          "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
-          "targetUrl: 'http://www.someTarget.com') { error 'exit 1' }}";
+  // Does the new completionStatus/Description feature work?
+  public static final String SUCCESS_JENKINS_PENDING_PAYLOAD =
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "completionStatus: 'PENDING', completionDescription: '" + PENDING_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ echo '"+ SUCCESSFUL_LOG_MSG + "' }}";
+
+  public static final String FAIL_JENKINS_BAD_BLOCK_PAYLOAD =
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ error 'exit 1' }}";
+
+  public static final String FAIL_JENKINS_PENDING_PAYLOAD =
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: '" + DEFAULT_DESCRIPTION + "', " +
+      "completionStatus: 'PENDING', completionDescription: '" + PENDING_DESCRIPTION + "', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ error 'exit 1' }}";
 
   public static final String SUCCESS_JENKINS_RESTART_PAYLOAD =
-          "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
-                  "credentialsId: 'dummy', description: 'OK', " +
-                  "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
-                  "targetUrl: 'http://www.someTarget.com') " +
-                  "{ semaphore 'wait-inside'\n };\n" +
-                  "echo '" + SUCCESSFUL_LOG_MSG + "';" +
-                  "}";
+    "node { gitStatusWrapper( account: 'myAccount', gitHubContext: 'status/context', " +
+      "credentialsId: 'dummy', description: 'OK', " +
+      "repo: 'myRepo', sha: '439ac0b0c4870bf5936e84940d73128db905e93d', " +
+      "targetUrl: 'http://www.example.com') " +
+      "{ semaphore 'wait-inside'\n };\n" +
+      "echo '" + SUCCESSFUL_LOG_MSG + "';}";
 
   @Rule
   public RestartableJenkinsRule jenkins = new RestartableJenkinsRule();
@@ -100,7 +131,40 @@ public class GitStatusWrapperStepTest {
   @Test
   public void buildWithFailingBlockMustFail() throws Exception {
     jenkins.then((JenkinsRule j) -> {
-      StatusWrapperTestObj statusWrapperTestObj = setupStableEnvMockObj(j, FAIL_JENKINS_PAYLOAD_BAD_BLOCK);
+      StatusWrapperTestObj statusWrapperTestObj = setupStableEnvMockObj(j, FAIL_JENKINS_BAD_BLOCK_PAYLOAD);
+      j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(statusWrapperTestObj.getRun()));
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.PENDING), anyString(), anyString(), anyString());
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.FAILURE), anyString(), anyString(), anyString());
+      j.assertLogContains("exit 1", statusWrapperTestObj.getRun());
+    });
+  }
+
+  @Test
+  public void buildWithSuccessDescription() throws Exception {
+    jenkins.then((JenkinsRule j) -> {
+      StatusWrapperTestObj statusWrapperTestObj = setupStableEnvMockObj(j, SUCCESS_JENKINS_DESCRIPTION_PAYLOAD);
+      j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(statusWrapperTestObj.getRun()));
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.PENDING), anyString(), eq(DEFAULT_DESCRIPTION), anyString());
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.SUCCESS), anyString(), eq(SUCCESS_DESCRIPTION), anyString());
+      j.assertLogContains(SUCCESSFUL_LOG_MSG, statusWrapperTestObj.getRun());
+    });
+  }
+
+  @Test
+  public void buildWithPending() throws Exception {
+    jenkins.then((JenkinsRule j) -> {
+      StatusWrapperTestObj statusWrapperTestObj = setupStableEnvMockObj(j, SUCCESS_JENKINS_PENDING_PAYLOAD);
+      j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(statusWrapperTestObj.getRun()));
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.PENDING), anyString(), eq(DEFAULT_DESCRIPTION), anyString());
+      Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.PENDING), anyString(), eq(PENDING_DESCRIPTION), anyString());
+      j.assertLogContains(SUCCESSFUL_LOG_MSG, statusWrapperTestObj.getRun());
+    });
+  }
+
+  @Test
+  public void buildWithPendingStillFails() throws Exception {
+    jenkins.then((JenkinsRule j) -> {
+      StatusWrapperTestObj statusWrapperTestObj = setupStableEnvMockObj(j, FAIL_JENKINS_PENDING_PAYLOAD);
       j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(statusWrapperTestObj.getRun()));
       Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.PENDING), anyString(), anyString(), anyString());
       Mockito.verify(statusWrapperTestObj.getRepo(), Mockito.times(1)).createCommitStatus(anyString(), Mockito.eq(GHCommitState.FAILURE), anyString(), anyString(), anyString());
