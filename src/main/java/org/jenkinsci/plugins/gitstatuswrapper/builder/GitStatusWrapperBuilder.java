@@ -327,18 +327,26 @@ public class GitStatusWrapperBuilder extends Builder {
   private void setStatus(BuildListener listener, GHRepository repository, GHCommit commit,
       GHCommitState state)
       throws IOException {
+    String commitID = commit.getSHA1();
+    GHCommitState commitStatus = ghCommitStatusFromState(state);
+    String description = descriptionFromState(state);
+    String context = statusWrapperData.getGitHubContext();
     listener.getLogger().println(
-        String.format(Messages.GitStatusWrapper_PRIMARY_LOG_TEMPLATE(),
-            state,
-            statusWrapperData.getGitHubContext(), commit.getSHA1())
+      String.format(Messages.GitStatusWrapper_PRIMARY_LOG_TEMPLATE(),
+        commitStatus,
+        context,
+        commitID)
     );
 
-    String description = getDescriptionForState(state);
-
-    repository.createCommitStatus(commit.getSHA1(),
-        state, statusWrapperData.getTargetUrl(), description,
-        statusWrapperData.getGitHubContext());
+    repository.createCommitStatus(
+      commitID,
+      commitStatus,
+      statusWrapperData.getTargetUrl(),
+      description,
+      context);
   }
+
+  private GHCommitState ghCommitStatusFromState(GHCommitState state) {
 
   /***
    * get the description for the git status
@@ -348,7 +356,7 @@ public class GitStatusWrapperBuilder extends Builder {
    * @return
    * @throws IOException
    */
-  private String getDescriptionForState(final GHCommitState state)
+  private String descriptionFromState(final GHCommitState state)
       throws IOException {
     if (state == GHCommitState.PENDING) {
       return this.getDescription();

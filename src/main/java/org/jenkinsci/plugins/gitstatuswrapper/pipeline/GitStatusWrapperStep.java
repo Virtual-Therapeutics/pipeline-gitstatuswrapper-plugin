@@ -302,16 +302,28 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
 
     public void setStatus(GHCommitState state)
             throws IOException, InterruptedException {
-      listener().getLogger().println(
-          String.format(Messages.GitStatusWrapper_PRIMARY_LOG_TEMPLATE(),
-              state.toString(),
-                  this.step.getGitHubContext(), commit().getSHA1())
-      );
-      String description = getDescriptionForState(state);
+      String commit = commit().getSHA1();
+      GHCommitState commitStatus = ghCommitStatusFromState(state);
+      String description = descriptionFromState(state);
+      String context = this.step.getGitHubContext();
 
-      this.repository().createCommitStatus(commit().getSHA1(),
-          state, this.step.getTargetUrl(), description,
-          this.step.getGitHubContext());
+      listener().getLogger().println(
+        String.format(Messages.GitStatusWrapper_PRIMARY_LOG_TEMPLATE(),
+          commitStatus.toString(),
+          context,
+          commit)
+      );
+
+      this.repository().createCommitStatus(
+        commit,
+        commitStatus,
+        this.step.getTargetUrl(),
+        description,
+        context);
+    }
+
+    private GHCommitState ghCommitStatusFromState(GHCommitState state) {
+      return state;
     }
 
     private TaskListener listener() throws IOException, InterruptedException {
@@ -352,7 +364,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
      * @return
      * @throws IOException
      */
-    private String getDescriptionForState(final GHCommitState state)
+    private String descriptionFromState(final GHCommitState state)
             throws IOException, InterruptedException {
       if (state == GHCommitState.PENDING) {
         return this.step.getDescription();
