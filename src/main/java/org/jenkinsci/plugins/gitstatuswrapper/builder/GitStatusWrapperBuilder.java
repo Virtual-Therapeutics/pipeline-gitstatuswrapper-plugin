@@ -47,6 +47,7 @@ import org.jenkinsci.plugins.displayurlapi.DisplayURLProvider;
 import org.jenkinsci.plugins.gitstatuswrapper.Messages;
 import org.jenkinsci.plugins.gitstatuswrapper.github.GitHubHelper;
 import org.jenkinsci.plugins.gitstatuswrapper.jenkins.JenkinsHelpers;
+import org.jenkinsci.plugins.gitstatuswrapper.StepState;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHCommitState;
 import org.kohsuke.github.GHRepository;
@@ -300,7 +301,7 @@ public class GitStatusWrapperBuilder extends Builder {
 
     GHCommit commit = repository.getCommit(statusWrapperData.sha);
 
-    setStatus(listener, repository, commit, GHCommitState.PENDING);
+    updateStepState(listener, repository, commit, StepState.STARTED);
 
     boolean everyStepSuccessful = true;
 
@@ -312,24 +313,24 @@ public class GitStatusWrapperBuilder extends Builder {
         }
       }
     } catch (IOException | InterruptedException ioe) {
-      setStatus(listener, repository, commit, GHCommitState.FAILURE);
+      updateStepState(listener, repository, commit, StepState.FAILED);
       throw ioe;
     }
 
     if (everyStepSuccessful) {
-      setStatus(listener, repository, commit, GHCommitState.SUCCESS);
+      updateStepState(listener, repository, commit, StepState.COMPLETED);
     } else {
-      setStatus(listener, repository, commit, GHCommitState.FAILURE);
+      updateStepState(listener, repository, commit, StepState.FAILED);
     }
     return everyStepSuccessful;
   }
 
-  private void setStatus(BuildListener listener, GHRepository repository, GHCommit commit,
-      GHCommitState state)
+  private void updateStepState(BuildListener listener, GHRepository repository, GHCommit commit,
+      StepState state)
       throws IOException {
     String commitID = commit.getSHA1();
-    GHCommitState commitStatus = ghCommitStatusFromState(state);
-    String description = descriptionFromState(state);
+    GHCommitState commitStatus = ghCommitStatusFromStepState(state);
+    String description = descriptionFromStepState(state);
     String context = statusWrapperData.getGitHubContext();
     listener.getLogger().println(
       String.format(Messages.GitStatusWrapper_PRIMARY_LOG_TEMPLATE(),
@@ -346,7 +347,15 @@ public class GitStatusWrapperBuilder extends Builder {
       context);
   }
 
-  private GHCommitState ghCommitStatusFromState(GHCommitState state) {
+  private GHCommitState ghCommitStatusFromStepState(StepState state) {
+      switch(state)
+      {
+        case STARTED: return GHCommitState.PENDING;
+        case COMPLETED: return GHCommitState.SUCCESS;
+        case FAILED: return GHCommitState.FAILURE; // TODO: differentiate failure/error?
+        default: throw new IllegalArgumentException("Don't know what to do with state " + state.toString());
+      }
+    }
 
   /***
    * get the description for the git status
@@ -356,13 +365,13 @@ public class GitStatusWrapperBuilder extends Builder {
    * @return
    * @throws IOException
    */
-  private String descriptionFromState(final GHCommitState state)
+  private String descriptionFromStepState(final StepState state)
       throws IOException {
-    if (state == GHCommitState.PENDING) {
+    if (state == StepState.STARTED) {
       return this.getDescription();
     }
 
-    String description = state == GHCommitState.SUCCESS ? statusWrapperData.getSuccessDescription()
+    String description = state == StepState.COMPLETED ? statusWrapperData.getSuccessDescription()
         : statusWrapperData.getFailureDescription();
 
     String result = description;

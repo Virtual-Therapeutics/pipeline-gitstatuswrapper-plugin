@@ -37,6 +37,7 @@ import org.jenkinsci.plugins.displayurlapi.DisplayURLProvider;
 import org.jenkinsci.plugins.gitstatuswrapper.Messages;
 import org.jenkinsci.plugins.gitstatuswrapper.github.GitHubHelper;
 import org.jenkinsci.plugins.gitstatuswrapper.jenkins.JenkinsHelpers;
+import org.jenkinsci.plugins.gitstatuswrapper.StepState;
 import org.jenkinsci.plugins.workflow.steps.*;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHCommitState;
@@ -288,7 +289,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
       this.step.setAccount(this.getAccount());
       this.step.setTargetUrl(this.getTargetUrl());
 
-      this.setStatus(GHCommitState.PENDING);
+      this.updateStepState(StepState.STARTED);
 
       EnvVars envOverride = new EnvVars();
       EnvironmentExpander envEx = EnvironmentExpander
@@ -300,11 +301,11 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
       return false;
     }
 
-    public void setStatus(GHCommitState state)
+    public void updateStepState(StepState state)
             throws IOException, InterruptedException {
       String commit = commit().getSHA1();
-      GHCommitState commitStatus = ghCommitStatusFromState(state);
-      String description = descriptionFromState(state);
+      GHCommitState commitStatus = ghCommitStatusFromStepState(state);
+      String description = descriptionFromStepState(state);
       String context = this.step.getGitHubContext();
 
       listener().getLogger().println(
@@ -322,8 +323,14 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
         context);
     }
 
-    private GHCommitState ghCommitStatusFromState(GHCommitState state) {
-      return state;
+    private GHCommitState ghCommitStatusFromStepState(StepState state) {
+      switch(state)
+      {
+        case STARTED: return GHCommitState.PENDING;
+        case COMPLETED: return GHCommitState.SUCCESS;
+        case FAILED: return GHCommitState.FAILURE; // TODO: differentiate failure/error?
+        default: throw new IllegalArgumentException("Don't know what to do with state " + state.toString());
+      }
     }
 
     private TaskListener listener() throws IOException, InterruptedException {
@@ -364,13 +371,13 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
      * @return
      * @throws IOException
      */
-    private String descriptionFromState(final GHCommitState state)
+    private String descriptionFromStepState(final StepState state)
             throws IOException, InterruptedException {
-      if (state == GHCommitState.PENDING) {
+      if (state == StepState.STARTED) {
         return this.step.getDescription();
       }
 
-      String description = state == GHCommitState.SUCCESS ? this.step.getSuccessDescription()
+      String description = state == StepState.COMPLETED ? this.step.getSuccessDescription()
           : this.step.getFailureDescription();
 
       String result = description;
@@ -454,7 +461,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
       @Override
       public final void onSuccess(StepContext context, Object result) {
         try {
-          execution.setStatus(GHCommitState.SUCCESS);
+          execution.updateStepState(StepState.COMPLETED);
         } catch (Exception x) {
           context.onFailure(x);
           return;
@@ -465,7 +472,7 @@ public final class GitStatusWrapperStep extends Step implements Serializable {
       @Override
       public void onFailure(StepContext context, Throwable t) {
         try {
-          execution.setStatus(GHCommitState.FAILURE);
+          execution.updateStepState(StepState.FAILED);
         } catch (Exception x) {
           t.addSuppressed(x);
         }
